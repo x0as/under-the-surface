@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 export default function App() {
   const [currentZone, setCurrentZone] = useState('surface');
   const [activeModal, setActiveModal] = useState(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   const [settings, setSettings] = useState({
     sound: true,
@@ -15,6 +14,7 @@ export default function App() {
   const [particles, setParticles] = useState([]);
   const [fishList, setFishList] = useState([]);
   const [jellyfish, setJellyfish] = useState([]);
+  const [anglerfish, setAnglerfish] = useState([]);
 
   const zones = {
     surface: {
@@ -50,19 +50,12 @@ export default function App() {
   const zoneOrder = ['surface', 'twilight', 'midnight', 'abyss'];
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  useEffect(() => {
     if (!settings.particles) {
       setBubbles([]);
       setParticles([]);
       setFishList([]);
       setJellyfish([]);
+      setAnglerfish([]);
       return;
     }
 
@@ -85,15 +78,24 @@ export default function App() {
       duration: Math.random() * 8 + 6
     }));
 
-    const generatedFish = Array.from({ length: 4 }, (_, i) => ({
-      id: `f-${i}`,
-      top: Math.random() * 70 + 15,
-      size: Math.random() * 25 + 15,
-      duration: Math.random() * 15 + 10,
-      delay: Math.random() * 10,
-      direction: Math.random() > 0.5 ? 'left' : 'right',
-      hue: Math.random() * 40 - 20
-    }));
+    const generatedFish = Array.from({ length: 7 }, (_, i) => {
+      const roll = Math.random();
+      const type = roll < 0.55 ? 'fish' : roll < 0.75 ? 'ray' : roll < 0.9 ? 'shark' : 'turtle';
+      const baseSize = type === 'ray' ? Math.random() * 20 + 25
+        : type === 'turtle' ? Math.random() * 14 + 18
+        : type === 'shark' ? Math.random() * 20 + 30
+        : Math.random() * 20 + 14;
+      return {
+        id: `f-${i}`,
+        type,
+        top: Math.random() * 70 + 15,
+        size: baseSize,
+        duration: type === 'shark' ? Math.random() * 10 + 14 : Math.random() * 15 + 10,
+        delay: Math.random() * 10,
+        direction: Math.random() > 0.5 ? 'left' : 'right',
+        hue: Math.random() * 40 - 20
+      };
+    });
 
     const generatedJelly = Array.from({ length: 3 }, (_, i) => ({
       id: `j-${i}`,
@@ -103,10 +105,20 @@ export default function App() {
       delay: Math.random() * 6
     }));
 
+    const generatedAnglers = Array.from({ length: 2 }, (_, i) => ({
+      id: `a-${i}`,
+      top: Math.random() * 50 + 25,
+      size: Math.random() * 20 + 30,
+      duration: Math.random() * 20 + 22,
+      delay: Math.random() * 12,
+      direction: Math.random() > 0.5 ? 'left' : 'right'
+    }));
+
     setBubbles(generatedBubbles);
     setParticles(generatedParticles);
     setFishList(generatedFish);
     setJellyfish(generatedJelly);
+    setAnglerfish(generatedAnglers);
   }, [settings.particles, settings.intensity]);
 
   const cycleZone = () => {
@@ -117,7 +129,6 @@ export default function App() {
   const menuButtons = [
     { label: 'Explore Ocean', action: cycleZone, primary: true },
     { label: 'Start Challenge', action: () => setActiveModal('challenge') },
-    { label: 'Ocean Encyclopedia', action: () => setActiveModal('encyclopedia') },
     { label: 'Settings', action: () => setActiveModal('settings') }
   ];
 
@@ -137,6 +148,7 @@ export default function App() {
     }}>
       
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
         @keyframes floatUp {
           0% { transform: translateY(110vh) translateX(0); opacity: 0; }
           10% { opacity: 0.6; }
@@ -175,6 +187,10 @@ export default function App() {
           0%, 100% { transform: rotate(-3deg); }
           50% { transform: rotate(4deg); }
         }
+        @keyframes pulseLure {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.4); }
+        }
         .menu-btn:hover {
           transform: translateY(-4px) scale(1.03);
           box-shadow: 0 12px 25px rgba(0,0,0,0.4), 0 0 15px var(--accent);
@@ -185,19 +201,6 @@ export default function App() {
           transform: translateY(-1px);
         }
       `}</style>
-
-      <div style={{
-        position: 'absolute',
-        top: mousePos.y - 120,
-        left: mousePos.x - 120,
-        width: 240,
-        height: 240,
-        borderRadius: '50%',
-        background: `radial-gradient(circle, ${zones[currentZone].accent}15 0%, transparent 70%)`,
-        pointerEvents: 'none',
-        zIndex: 2,
-        transition: 'background 2s ease'
-      }} />
 
       {currentZone === 'surface' && (
         <div style={{
@@ -267,18 +270,36 @@ export default function App() {
         <div key={f.id} style={{
           position: 'absolute',
           top: `${f.top}%`,
-          width: f.size * 2,
-          height: f.size,
+          width: f.type === 'ray' ? f.size * 2.2 : f.size * 2,
+          height: f.type === 'ray' ? f.size * 0.9 : f.size,
           animation: `${f.direction === 'left' ? 'swimLeft' : 'swimRight'} ${f.duration}s infinite linear`,
           animationDelay: `${f.delay}s`,
-          opacity: currentZone === 'surface' || currentZone === 'twilight' ? 0.5 : 0.1,
+          opacity: currentZone === 'surface' || currentZone === 'twilight' ? 0.5 : 0.15,
           transition: 'opacity 2s ease',
           pointerEvents: 'none',
           zIndex: 1
         }}>
-          <svg viewBox="0 0 100 50" style={{ width: '100%', height: '100%', fill: zones[currentZone].accent, filter: `hue-rotate(${f.hue}deg) drop-shadow(0 0 5px ${zones[currentZone].accent})` }}>
-            <path d="M10,25 C30,5 70,10 85,25 C70,40 30,45 10,25 Z M85,25 L100,13 L95,25 L100,37 Z" />
-          </svg>
+          {f.type === 'ray' && (
+            <svg viewBox="0 0 120 60" style={{ width: '100%', height: '100%', fill: zones[currentZone].accent, filter: `hue-rotate(${f.hue}deg) drop-shadow(0 0 5px ${zones[currentZone].accent})` }}>
+              <path d="M60,30 C40,5 10,10 0,30 C10,50 40,55 60,30 C80,55 110,50 120,30 C110,10 80,5 60,30 Z M60,30 L60,52 L52,44 M60,30 L60,52 L68,44" />
+            </svg>
+          )}
+          {f.type === 'shark' && (
+            <svg viewBox="0 0 120 50" style={{ width: '100%', height: '100%', fill: zones[currentZone].accent, filter: `hue-rotate(${f.hue}deg) drop-shadow(0 0 5px ${zones[currentZone].accent})` }}>
+              <path d="M5,30 C25,10 70,8 110,22 L120,15 L112,28 L120,32 L108,32 C90,42 40,45 5,30 Z M35,10 L45,22 L28,22 Z" />
+            </svg>
+          )}
+          {f.type === 'turtle' && (
+            <svg viewBox="0 0 100 60" style={{ width: '100%', height: '100%', fill: zones[currentZone].accent, filter: `hue-rotate(${f.hue}deg) drop-shadow(0 0 5px ${zones[currentZone].accent})` }}>
+              <ellipse cx="50" cy="32" rx="28" ry="20" />
+              <path d="M22,20 C10,15 2,20 6,28 C10,26 18,26 24,30 Z M78,20 C90,15 98,20 94,28 C90,26 82,26 76,30 Z M22,44 C10,49 2,44 6,36 C10,38 18,38 24,34 Z M78,44 C90,49 98,44 94,36 C90,38 82,38 76,34 Z M50,12 C56,8 62,10 60,16 C57,14 53,14 50,17 Z" />
+            </svg>
+          )}
+          {f.type === 'fish' && (
+            <svg viewBox="0 0 100 50" style={{ width: '100%', height: '100%', fill: zones[currentZone].accent, filter: `hue-rotate(${f.hue}deg) drop-shadow(0 0 5px ${zones[currentZone].accent})` }}>
+              <path d="M10,25 C30,5 70,10 85,25 C70,40 30,45 10,25 Z M85,25 L100,13 L95,25 L100,37 Z" />
+            </svg>
+          )}
         </div>
       ))}
 
@@ -296,6 +317,26 @@ export default function App() {
           <svg viewBox="0 0 100 150" style={{ width: '100%', height: '100%', fill: 'none', stroke: zones[currentZone].accent, strokeWidth: 2, opacity: 0.6, filter: 'drop-shadow(0 0 8px #fff)' }}>
             <path d="M20,50 C20,10 80,10 80,50 C80,60 20,60 20,50 Z" fill={`${zones[currentZone].accent}33`} />
             <path d="M30,55 Q35,100 25,140 M42,58 Q40,95 45,135 M58,58 Q60,105 55,145 M70,55 Q65,95 75,138" strokeWidth={1.5} strokeDasharray="2,2" />
+          </svg>
+        </div>
+      ))}
+
+      {(currentZone === 'midnight' || currentZone === 'abyss') && anglerfish.map(a => (
+        <div key={a.id} style={{
+          position: 'absolute',
+          top: `${a.top}%`,
+          width: a.size * 1.8,
+          height: a.size,
+          animation: `${a.direction === 'left' ? 'swimLeft' : 'swimRight'} ${a.duration}s infinite linear`,
+          animationDelay: `${a.delay}s`,
+          opacity: 0.85,
+          pointerEvents: 'none',
+          zIndex: 1
+        }}>
+          <svg viewBox="0 0 100 60" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+            <path d="M8,32 C8,15 30,8 50,14 C68,19 72,32 68,42 C58,52 25,52 12,42 C9,39 8,36 8,32 Z" fill="#1a1420" stroke={zones[currentZone].accent} strokeWidth="1" opacity="0.9" />
+            <path d="M15,24 Q5,10 -5,4" fill="none" stroke="#1a1420" strokeWidth="2" />
+            <circle cx="-5" cy="4" r="4" fill="#fffbe0" style={{ animation: 'pulseLure 2.4s infinite ease-in-out', filter: 'drop-shadow(0 0 6px #fffbe0)' }} />
           </svg>
         </div>
       ))}
@@ -337,7 +378,7 @@ export default function App() {
         paddingRight: 15
       }}>
         <div style={{ fontSize: '0.8rem', letterSpacing: 3, textTransform: 'uppercase', opacity: 0.6 }}>Current Layer</div>
-        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', textShadow: `0 0 10px ${zones[currentZone].accent}` }}>{zones[currentZone].name}</div>
+        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', fontFamily: "'Fraunces', Georgia, serif" }}>{zones[currentZone].name}</div>
         <div style={{ fontSize: '0.9rem', opacity: 0.8, fontFamily: 'monospace', marginTop: 2 }}>{zones[currentZone].depth}</div>
       </div>
 
@@ -354,36 +395,37 @@ export default function App() {
         
         <div style={{ textAlign: 'center', marginBottom: 50 }}>
           <div style={{
-            fontSize: '0.95rem',
-            letterSpacing: 8,
+            fontSize: '0.85rem',
+            letterSpacing: 5,
             textTransform: 'uppercase',
             color: zones[currentZone].accent,
             fontWeight: 600,
-            marginBottom: 8,
-            textShadow: `0 0 8px ${zones[currentZone].accent}aa`,
+            marginBottom: 10,
             transition: 'color 2s ease'
           }}>
             HACKATHON 2026
           </div>
           
           <h1 style={{
+            fontFamily: "'Fraunces', Georgia, serif",
             fontSize: 'clamp(2.5rem, 6vw, 5.5rem)',
-            fontWeight: 900,
+            fontWeight: 600,
+            fontStyle: 'italic',
             margin: 0,
-            letterSpacing: 4,
+            letterSpacing: 0,
             lineHeight: 0.95,
             color: '#ffffff',
-            textShadow: `0 0 20px ${zones[currentZone].accent}88, 0 4px 10px rgba(0,0,0,0.7)`,
+            textShadow: '0 4px 20px rgba(0,0,0,0.5)',
             position: 'relative'
           }}>
-            UNDER THE SURFACE
+            Under the Surface
           </h1>
 
           <p style={{
             fontSize: 'clamp(0.9rem, 1.5vw, 1.2rem)',
-            fontStyle: 'italic',
-            letterSpacing: 3,
-            opacity: 0.8,
+            fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            letterSpacing: 1,
+            opacity: 0.75,
             marginTop: 15,
             color: '#e0f2fe'
           }}>
@@ -447,8 +489,7 @@ export default function App() {
           left: 0,
           width: '100vw',
           height: '100vh',
-          backgroundColor: 'rgba(0, 3, 15, 0.85)',
-          backdropFilter: 'blur(8px)',
+          backgroundColor: 'rgba(0, 3, 15, 0.7)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -456,10 +497,9 @@ export default function App() {
           padding: 20
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #04122c 0%, #010614 100%)',
-            border: `2px solid ${zones[currentZone].accent}`,
-            boxShadow: `0 0 30px ${zones[currentZone].accent}44`,
-            borderRadius: 12,
+            background: '#081226',
+            border: `1px solid ${zones[currentZone].accent}66`,
+            borderRadius: 8,
             width: '100%',
             maxWidth: 550,
             padding: 35,
@@ -518,26 +558,6 @@ export default function App() {
                       onChange={(e) => setSettings({ ...settings, intensity: Number(e.target.value) })}
                       style={{ width: '100%', accentColor: zones[currentZone].accent }}
                     />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'encyclopedia' && (
-              <div>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '1.5rem', letterSpacing: 2, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 10 }}>MARINE LOGBOOK</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 15, maxHeight: '350px', overflowY: 'auto', paddingRight: 10 }}>
-                  <div style={{ padding: 15, background: 'rgba(255,255,255,0.03)', borderRadius: 6, borderLeft: `3px solid #38bdf8` }}>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#fff' }}>Vapor-Lantern Jelly</h4>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.8 }}>Spotted at 1,200m. Generates a unique steam-like cloud of glowing bacteria to blind predators before vanishing into the abyss.</p>
-                  </div>
-                  <div style={{ padding: 15, background: 'rgba(255,255,255,0.03)', borderRadius: 6, borderLeft: `3px solid #818cf8` }}>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#fff' }}>Titan Obsidian Whale</h4>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.8 }}>A mythical leviathan roaming the deepest abyssal plains. Its skin is composed of dense, pressure-resistant mineral plates.</p>
-                  </div>
-                  <div style={{ padding: 15, background: 'rgba(255,255,255,0.03)', borderRadius: 6, borderLeft: `3px solid #00ffff` }}>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#fff' }}>Prismatic Coral Reef</h4>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.8 }}>Unusually resilient flora thriving near thermal vents, reflecting dynamic spectrums of light from raw chemical energy.</p>
                   </div>
                 </div>
               </div>
